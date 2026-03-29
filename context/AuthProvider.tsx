@@ -30,17 +30,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      // Use the server-side route so the service-role key is used —
+      // this bypasses any RLS policy that might block the anon read.
+      const res = await fetch('/api/auth/me', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
 
-      if (error) {
-        console.error('Profile fetch error:', error.message);
+      if (!res.ok) {
+        console.error('Profile fetch error: status', res.status);
         return;
       }
-      setProfile(data as Profile);
+
+      const { profile } = await res.json();
+      setProfile(profile as Profile);
     } catch {
       console.error('Could not fetch profile');
     }
@@ -98,38 +102,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password: string,
     metadata: Record<string, unknown>
   ) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: metadata },
-    });
-
-    if (error) return { error: error.message };
-
-    // Create profile entry
-    if (data.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: data.user.id,
-        email,
-        role: metadata.role || 'donor',
-        full_name: metadata.full_name || '',
-        phone: metadata.phone || '',
-        blood_group: metadata.blood_group || null,
-        location: metadata.location || '',
-        hospital_name: metadata.hospital_name || null,
-        license_number: metadata.license_number || null,
-        address: metadata.address || null,
-        contact_person: metadata.contact_person || null,
-        is_approved: metadata.role === 'donor',
+    try {
+      // Use the server-side API route so the profile insert runs with
+      // service-role privileges — bypasses RLS and works even when
+      // email confirmation is enabled (no active session yet).
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, ...metadata }),
       });
 
-      if (profileError) {
-        console.error('Profile creation error:', profileError.message);
-        return { error: profileError.message };
-      }
-    }
+      const json = await res.json();
 
-    return { error: null };
+      if (!res.ok) {
+        return { error: json.error ?? 'Registration failed' };
+      }
+
+      // If email confirmation is disabled Supabase returns a session
+      // immediately; sign the user in so the auth state updates.
+      if (json.session) {
+        await supabase.auth.setSession(json.session);
+      }
+
+      return { error: null };
+    } catch (err) {
+      console.error('SignUp error:', err);
+      return { error: 'An unexpected error occurred. Please try again.' };
+    }
   };
 
   const signOut = async () => {
