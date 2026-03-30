@@ -77,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(newSession?.user ?? null);
 
       if (newSession?.user) {
+        setLoading(true);
         await fetchProfile(newSession.user.id);
       } else {
         setProfile(null);
@@ -88,10 +89,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+
+    if (data?.user) {
+      await fetchProfile(data.user.id);
+    }
+
     return { error: error?.message ?? null };
   };
 
