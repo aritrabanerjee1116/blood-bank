@@ -3,7 +3,19 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import StatsCard from '@/components/StatsCard';
-import BloodStockCard from '@/components/BloodStockCard';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+  PieChart,
+  Pie,
+  Legend,
+} from 'recharts';
 import {
   Users,
   Building2,
@@ -11,6 +23,8 @@ import {
   FileText,
   TrendingUp,
   Calendar,
+  BarChart2,
+  PieChart as PieIcon,
 } from 'lucide-react';
 import type { BloodGroup, BloodRequest } from '@/lib/types';
 
@@ -62,6 +76,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats>(defaultStats);
   const [recentRequests, setRecentRequests] = useState<Partial<BloodRequest>[]>(demoRequests);
   const [stock, setStock] = useState(demoStock);
+  const [chartTab, setChartTab] = useState<'bar' | 'donut'>('bar');
 
   useEffect(() => {
     fetchDashboardData();
@@ -144,18 +159,143 @@ export default function AdminDashboard() {
         />
       </div>
 
-      {/* Blood Stock Overview */}
+      {/* Blood Stock Overview – Charts */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-[var(--color-primary)]" />
             Blood Stock Overview
           </h2>
+          {/* Chart type tabs */}
+          <div style={{
+            display: 'flex',
+            gap: '6px',
+            background: 'rgba(255,255,255,0.05)',
+            borderRadius: '10px',
+            padding: '4px',
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}>
+            <button
+              onClick={() => setChartTab('bar')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '6px 14px', borderRadius: '8px', fontSize: '13px',
+                fontWeight: 600, border: 'none', cursor: 'pointer',
+                transition: 'all 0.2s',
+                background: chartTab === 'bar' ? 'var(--color-primary)' : 'transparent',
+                color: chartTab === 'bar' ? '#fff' : 'var(--color-muted)',
+              }}
+            >
+              <BarChart2 size={14} /> Bar
+            </button>
+            <button
+              onClick={() => setChartTab('donut')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '6px 14px', borderRadius: '8px', fontSize: '13px',
+                fontWeight: 600, border: 'none', cursor: 'pointer',
+                transition: 'all 0.2s',
+                background: chartTab === 'donut' ? 'var(--color-primary)' : 'transparent',
+                color: chartTab === 'donut' ? '#fff' : 'var(--color-muted)',
+              }}
+            >
+              <PieIcon size={14} /> Donut
+            </button>
+          </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 stagger-children">
-          {stock.map((s) => (
-            <BloodStockCard key={s.blood_group} bloodGroup={s.blood_group} units={s.units} />
-          ))}
+
+        <div className="glass-card" style={{ padding: '24px' }}>
+          {chartTab === 'bar' ? (
+            <>
+              <p style={{ fontSize: '12px', color: 'var(--color-muted)', marginBottom: '16px' }}>
+                Units available per blood group
+              </p>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={stock} margin={{ top: 4, right: 16, left: -10, bottom: 4 }} barCategoryGap="30%">
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                  <XAxis
+                    dataKey="blood_group"
+                    tick={{ fill: 'var(--color-muted)', fontSize: 13, fontWeight: 600 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fill: 'var(--color-muted)', fontSize: 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(220,38,38,0.08)' }}
+                    contentStyle={{
+                      background: 'rgba(18,18,30,0.95)',
+                      border: '1px solid rgba(220,38,38,0.3)',
+                      borderRadius: '10px',
+                      color: '#fff',
+                      fontSize: '13px',
+                    }}
+                    formatter={(value) => [`${Number(value)} units`, 'Stock']}
+                    labelFormatter={(label) => `Blood Group: ${label}`}
+                  />
+                  <Bar dataKey="units" radius={[6, 6, 0, 0]} maxBarSize={48}>
+                    {stock.map((entry) => {
+                      const u = entry.units;
+                      const color = u === 0 ? '#6B7280' : u <= 5 ? '#EF4444' : u <= 15 ? '#F59E0B' : '#22C55E';
+                      return <Cell key={entry.blood_group} fill={color} fillOpacity={0.85} />;
+                    })}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              {/* Legend */}
+              <div style={{ display: 'flex', gap: '20px', marginTop: '16px', flexWrap: 'wrap' }}>
+                {[{color:'#22C55E',label:'Sufficient (>15)'},{color:'#F59E0B',label:'Low (6–15)'},{color:'#EF4444',label:'Critical (1–5)'},{color:'#6B7280',label:'Out of Stock'}].map(l => (
+                  <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--color-muted)' }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 3, background: l.color, display: 'inline-block' }} />
+                    {l.label}
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <p style={{ fontSize: '12px', color: 'var(--color-muted)', marginBottom: '8px' }}>
+                Distribution of total blood units across all groups
+              </p>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={stock.map(s => ({ name: s.blood_group, value: s.units || 0 }))}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={110}
+                    paddingAngle={3}
+                    dataKey="value"
+                    label={({ name, value }) => value > 0 ? `${name}: ${value}` : ''}
+                    labelLine={false}
+                  >
+                    {stock.map((entry, index) => {
+                      const palette = ['#DC2626','#EF4444','#F97316','#F59E0B','#22C55E','#10B981','#3B82F6','#8B5CF6'];
+                      return <Cell key={entry.blood_group} fill={palette[index % palette.length]} fillOpacity={0.85} />;
+                    })}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      background: 'rgba(18,18,30,0.95)',
+                      border: '1px solid rgba(220,38,38,0.3)',
+                      borderRadius: '10px',
+                      color: '#fff',
+                      fontSize: '13px',
+                    }}
+                    formatter={(value, name) => [`${Number(value)} units`, String(name)]}
+                  />
+                  <Legend
+                    formatter={(value) => <span style={{ color: 'var(--color-muted)', fontSize: '12px' }}>{value}</span>}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </>
+          )}
         </div>
       </div>
 
