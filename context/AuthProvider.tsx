@@ -30,21 +30,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = async (userId: string) => {
     try {
-      // Use the server-side route so the service-role key is used —
-      // this bypasses any RLS policy that might block the anon read.
-      const res = await fetch('/api/auth/me', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
-      });
+      // Directly fetch from Supabase (works since RLS is disabled)
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-      if (!res.ok) {
-        console.error('Profile fetch error: status', res.status);
+      if (error) {
+        console.error('Profile fetch error:', error.message);
         return;
       }
 
-      const { profile } = await res.json();
-      setProfile(profile as Profile);
+      setProfile(profileData as Profile);
     } catch {
       console.error('Could not fetch profile');
     }
