@@ -2,8 +2,6 @@
 
 **BloodLink** is a comprehensive, open-source blood bank administration and management platform. Our overarching motive is to bridge the gap between blood demand and supply by efficiently connecting willing blood donors, hospitals, and blood banks through a real-time, unified network.
 
-![BloodLink Banner](https://via.placeholder.com/1200x400/0b0a1a/e11d48?text=BloodLink+Management+System)
-
 ## 📌 Features
 
 - **Multi-Role Authentication & Portals:** Secure Role-Based Access Control (RBAC) accommodating Admins, Hospitals, and Donors.
@@ -65,10 +63,5 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to explore the platform.
 
-## 🤝 Contributing
 
-Contributions, issues, and feature requests are always welcome! We're dedicated to improving the process of blood donation globally. Feel free to check the [issues page](https://github.com/yourusername/blood-bank/issues).
 
-## 📄 License
-
-This project is licensed under the MIT License. Built with ❤️ for saving lives.
